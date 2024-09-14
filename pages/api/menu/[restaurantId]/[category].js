@@ -1,6 +1,6 @@
 import dbConnect from '../../../../lib/dbConnect';
 import MenuItem from '../../../../models/MenuItem';
-import { withCors } from '../../../lib/cors';
+import { withCors } from '..//..//..//..//lib/cors';
 
 async function handler(req, res) {
     const { method, query } = req;
