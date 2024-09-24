@@ -1,6 +1,6 @@
-import dbConnect from '../../../lib/dbConnect';
-import Order from '../../../models/Order';
-import { withCors } from '../../../lib/cors';
+import dbConnect from '../../../../lib/dbConnect';
+import Order from '../../../../models/Order';
+import { withCors } from '..//..//..//..//lib/cors';
 
 async function handler(req, res) {
     const { method, query } = req;
@@ -9,11 +9,11 @@ async function handler(req, res) {
     switch (method) {
         case 'GET':
             try {
-                const order = await Order.findById(query.id);
-                if (!order) {
-                    return res.status(404).json({ message: 'Order not found' });
-                }
-                res.status(200).json(order);
+                const orders = await Order.find({
+                    restaurantId: query.id,
+                    orderStatus: { $ne: 'Completed' }
+                }).sort({ createdAt: 1 });
+                res.status(200).json(orders);
             } catch (error) {
                 res.status(500).json({ message: error.message });
             }
@@ -23,5 +23,4 @@ async function handler(req, res) {
             res.status(405).end(`Method ${method} Not Allowed`);
     }
 }
-
 export default withCors(handler);
