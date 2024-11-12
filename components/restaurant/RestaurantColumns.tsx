@@ -47,6 +47,7 @@ export const RestaurantColumns = ({ onEdit, onDelete }: RestaurantColumnsProps):
         header: "Owner Email",
     },
     {
+        header: "Action",
         id: "actions",
         cell: ({ row }) => (
             <div className="flex items-center gap-2">
