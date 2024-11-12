@@ -19,14 +19,14 @@ export const navLinks = [
     label: "Restaurant",
   },
   {
-    url: "/collections",
+    url: "/menu",
     icon: <Shapes />,
-    label: "Collections",
+    label: "MenuItems",
   },
   {
-    url: "/products",
+    url: "/payment",
     icon: <Tag />,
-    label: "Products",
+    label: "Payments",
   },
   {
     url: "/orders",
