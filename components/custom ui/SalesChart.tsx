@@ -1,11 +1,22 @@
 "use client"
 
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
-const SalesChart = ({ data }: { data: any[] }) => {
+// Define interface for the data structure
+interface SalesData {
+  name: string;
+  sales: number;
+}
+
+// Define props interface
+interface SalesChartProps {
+  data: SalesData[];
+}
+
+const SalesChart = ({ data }: SalesChartProps): JSX.Element => {
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <LineChart className='w-full h-full' data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+      <LineChart className="w-full h-full" data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
         <Line type="monotone" dataKey="sales" stroke="#8884d8" />
         <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
         <XAxis dataKey="name" />
@@ -16,4 +27,4 @@ const SalesChart = ({ data }: { data: any[] }) => {
   )
 }
 
-export default SalesChart
+export default SalesChart;

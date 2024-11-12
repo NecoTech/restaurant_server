@@ -26,10 +26,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         });
 
         // Parse the form data
-        const [fields, files] = await new Promise<[formidable.Fields, formidable.Files]>((resolve, reject) => {
-            form.parse(req, (err, fields, files) => {
+        const files = await new Promise<formidable.Files>((resolve, reject) => {
+            form.parse(req, (err, _fields, files) => {
                 if (err) reject(err);
-                resolve([fields, files]);
+                resolve(files);
             });
         });
 
