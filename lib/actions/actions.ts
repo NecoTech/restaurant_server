@@ -1,40 +1,40 @@
-import Customer from "..//..//models/Customer";
-import Order from "../..//models/Order";
-// import { connectToDB } from "../mongoDB"
+import Order from "..//..//models/Order";
 import connectToDB from '..//..//lib/dbConnect';
 
 export const getTotalSales = async () => {
   await connectToDB();
-  const orders = await Order.find()
+  const orders = await Order.find({ orderStatus: "Completed" }); // Only count completed orders
   const totalOrders = orders.length;
-  const totalRevenue = orders.reduce((acc, order) => acc + order.total, 0)
-  return { totalOrders, totalRevenue }
+  const totalRevenue = orders.reduce((acc, order) => acc + order.total, 0);
+  return { totalOrders, totalRevenue };
 }
 
 export const getTotalCustomers = async () => {
   await connectToDB();
-  const customers = await Customer.find()
-  const totalCustomers = customers.length
-  return totalCustomers
+  const orders = await Order.find();
+  // Get unique phone numbers from orders
+  const uniqueCustomers = new Set(orders.map(order => order.phonenumber));
+  return uniqueCustomers.size;
 }
 
 export const getSalesPerMonth = async () => {
-  await connectToDB()
-  const orders = await Order.find()
+  await connectToDB();
+  const orders = await Order.find({ orderStatus: "Completed" });
 
   const salesPerMonth = orders.reduce((acc, order) => {
-    const monthIndex = new Date(order.createdAt).getMonth(); // 0 for Janruary --> 11 for December
-    acc[monthIndex] = (acc[monthIndex] || 0) + order.totalAmount;
-    // For June
-    // acc[5] = (acc[5] || 0) + order.totalAmount (orders have monthIndex 5)
-    return acc
-  }, {})
+    const monthIndex = new Date(order.createdAt).getMonth();
+    acc[monthIndex] = (acc[monthIndex] || 0) + order.total;
+    return acc;
+  }, {});
 
+  // Create an array for all months with sales data
   const graphData = Array.from({ length: 12 }, (_, i) => {
-    const month = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(new Date(0, i))
-    // if i === 5 => month = "Jun"
-    return { name: month, sales: salesPerMonth[i] || 0 }
-  })
+    const month = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(new Date(0, i));
+    return {
+      name: month,
+      sales: Number((salesPerMonth[i] || 0).toFixed(2)) // Round to 2 decimal places
+    };
+  });
 
-  return graphData
+  return graphData;
 }
