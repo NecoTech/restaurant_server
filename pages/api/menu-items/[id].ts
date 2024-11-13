@@ -71,15 +71,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
                 // Handle image update if new image is uploaded
                 const imageFile = files.image?.[0];
-                if (imageFile) {
+                if (imageFile && imageFile.mimetype) {
                     const imageData = await fs.readFile(imageFile.filepath);
                     updateData.image = {
                         data: imageData,
                         contentType: imageFile.mimetype
                     };
+                    // Clean up the uploaded file
                     await fs.unlink(imageFile.filepath);
                 }
 
+                // Update the menu item
                 const updatedMenuItem = await MenuItem.findByIdAndUpdate(
                     id,
                     updateData,
@@ -90,11 +92,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
                     return res.status(404).json({ message: 'Menu item not found' });
                 }
 
+                // Prepare the response data
                 const responseData = {
                     ...updatedMenuItem.toObject(),
                     image: imageFile && updateData.image
                         ? `data:${imageFile.mimetype};base64,${updateData.image.data.toString('base64')}`
-                        : undefined
+                        : updatedMenuItem.image?.data
+                            ? `data:${updatedMenuItem.image.contentType};base64,${updatedMenuItem.image.data.toString('base64')}`
+                            : null
                 };
 
                 res.status(200).json({
@@ -102,7 +107,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
                     data: responseData
                 });
             } catch (error) {
-                res.status(400).json({ message: error instanceof Error ? error.message : 'Error updating menu item' });
+                console.error('Error updating menu item:', error);
+                res.status(400).json({
+                    success: false,
+                    message: error instanceof Error ? error.message : 'Error updating menu item'
+                });
             }
             break;
 
