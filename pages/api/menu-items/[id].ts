@@ -5,6 +5,17 @@ import { withCors } from '@/lib/cors';
 import formidable from 'formidable';
 import fs from 'fs/promises';
 
+interface UpdateMenuItemData {
+    name?: string;
+    description?: string;
+    price?: number;
+    category?: string;
+    image?: {
+        data: Buffer;
+        contentType: string;
+    };
+}
+
 export const config = {
     api: {
         bodyParser: false,
@@ -51,11 +62,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
                     });
                 });
 
-                const updateData: any = {
-                    name: fields.name?.[0],
-                    description: fields.description?.[0],
-                    price: fields.price?.[0] ? parseFloat(fields.price[0]) : undefined,
-                    category: fields.category?.[0],
+                const updateData: UpdateMenuItemData = {
+                    ...(fields.name?.[0] && { name: fields.name[0] }),
+                    ...(fields.description?.[0] && { description: fields.description[0] }),
+                    ...(fields.price?.[0] && { price: parseFloat(fields.price[0]) }),
+                    ...(fields.category?.[0] && { category: fields.category[0] }),
                 };
 
                 // Handle image update if new image is uploaded
@@ -79,14 +90,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
                     return res.status(404).json({ message: 'Menu item not found' });
                 }
 
+                const responseData = {
+                    ...updatedMenuItem.toObject(),
+                    image: imageFile && updateData.image
+                        ? `data:${imageFile.mimetype};base64,${updateData.image.data.toString('base64')}`
+                        : undefined
+                };
+
                 res.status(200).json({
                     success: true,
-                    data: {
-                        ...updatedMenuItem.toObject(),
-                        image: imageFile
-                            ? `data:${imageFile.mimetype};base64,${updateData.image.data.toString('base64')}`
-                            : undefined
-                    }
+                    data: responseData
                 });
             } catch (error) {
                 res.status(400).json({ message: error instanceof Error ? error.message : 'Error updating menu item' });
