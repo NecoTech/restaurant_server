@@ -19,7 +19,7 @@ export const navLinks = [
     label: "Restaurant",
   },
   {
-    url: "/menu",
+    url: "/dashboard/menu-items",
     icon: <Shapes />,
     label: "MenuItems",
   },
