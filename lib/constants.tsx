@@ -24,12 +24,12 @@ export const navLinks = [
     label: "MenuItems",
   },
   {
-    url: "/payment",
+    url: "/dashboard/payments",
     icon: <Tag />,
     label: "Payments",
   },
   {
-    url: "/orders",
+    url: "/dashboard/orders",
     icon: <ShoppingBag />,
     label: "Orders",
   },
