@@ -4,6 +4,25 @@ import Order from '@/models/Order';
 import Restaurant from '@/models/Restaurant';
 import { withCors } from '@/lib/cors';
 
+import { FilterQuery } from 'mongoose';
+
+interface IOrder {
+    userId: string;
+    orderNumber: string;
+    total: number;
+    phonenumber: string;
+    orderStatus: 'Pending' | 'Completed' | 'Cancelled';
+    paymentMethod: string;
+    paid: boolean;
+    restaurantId: string;
+    createdAt: Date;
+}
+const buildOrderQuery = (restaurantIds: string[], params: { restaurantId?: string; paymentMethod?: string }): FilterQuery<IOrder> => ({
+    restaurantId: params.restaurantId && params.restaurantId !== 'all' ? params.restaurantId : { $in: restaurantIds },
+    orderStatus: 'Completed',
+    ...(params.paymentMethod && params.paymentMethod !== 'all' && { paymentMethod: params.paymentMethod })
+});
+
 async function handler(req: NextApiRequest, res: NextApiResponse) {
     const { method, query } = req;
     await dbConnect();
@@ -17,39 +36,26 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
                     return res.status(400).json({ message: 'Owner email is required' });
                 }
 
-                // First, get all restaurants owned by this owner
                 const ownerRestaurants = await Restaurant.find({ ownerEmail });
                 const restaurantIds = ownerRestaurants.map(restaurant => restaurant.id);
 
-                // Build query based on filters
-                const queryObj: any = {
-                    restaurantId: { $in: restaurantIds },
-                    orderStatus: 'Completed' // Only get orders from owner's restaurants
-                };
+                const orderQuery = buildOrderQuery(restaurantIds, {
+                    restaurantId: restaurantId as string,
+                    paymentMethod: paymentMethod as string
+                });
 
-                // Add specific restaurant filter if provided
-                if (restaurantId && restaurantId !== 'all') {
-                    queryObj.restaurantId = restaurantId;
-                }
-
-                // Add payment method filter if provided
-                if (paymentMethod && paymentMethod !== 'all') {
-                    queryObj.paymentMethod = paymentMethod;
-                }
-
-                const orders = await Order.find(queryObj, { orderStatus: 'Completed' })
+                const orders = await Order.find(orderQuery)
                     .sort({ createdAt: -1 })
                     .select('userId orderNumber total phonenumber orderStatus paymentMethod paid restaurantId createdAt');
 
-                // Add restaurant details to each order
-                const restaurantsMap = ownerRestaurants.reduce((map, restaurant) => {
-                    map[restaurant.id] = restaurant.name;
-                    return map;
-                }, {} as { [key: string]: string });
+                const restaurantsMap: Record<string, string> = ownerRestaurants.reduce((map, restaurant) => ({
+                    ...map,
+                    [restaurant.id]: restaurant.name
+                }), {});
 
                 const ordersWithRestaurantDetails = orders.map(order => ({
                     ...order.toObject(),
-                    restaurantName: restaurantsMap[order.restaurantId] || 'Unknown Restaurant'
+                    restaurantName: restaurantsMap[order.restaurantId] ?? 'Unknown Restaurant'
                 }));
 
                 res.status(200).json(ordersWithRestaurantDetails);

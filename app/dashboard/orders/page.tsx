@@ -6,6 +6,7 @@ import { DataTable } from "@/components/custom ui/DataTable"
 import Loader from "@/components/custom ui/Loader"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
+import { ColumnDef } from "@tanstack/react-table"
 import {
   Select,
   SelectContent,
@@ -52,7 +53,7 @@ const OrdersPage = () => {
   const [selectedRestaurant, setSelectedRestaurant] = useState<string>("all")
   const router = useRouter()
 
-  const OrderColumns = [
+  const OrderColumns: ColumnDef<Order>[] = [
     {
       accessorKey: "orderId",
       header: "Order ID"
@@ -68,24 +69,24 @@ const OrdersPage = () => {
     {
       accessorKey: "totalAmount",
       header: "Total Amount",
-      cell: ({ row }: { row: any }) => (
-        <div>${row.original.totalAmount.toFixed(2)}</div>
+      cell: ({ row }) => (
+        <div>${row.getValue<number>("totalAmount").toFixed(2)}</div>
       )
     },
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }: { row: any }) => (
-        <div className={`capitalize font-medium ${getStatusColor(row.original.status)}`}>
-          {row.original.status}
+      cell: ({ row }) => (
+        <div className={`capitalize font-medium ${getStatusColor(row.getValue<Order["status"]>("status"))}`}>
+          {row.getValue<Order["status"]>("status")}
         </div>
       )
     },
     {
       accessorKey: "orderDate",
       header: "Order Date",
-      cell: ({ row }: { row: any }) => (
-        <div>{new Date(row.original.orderDate).toLocaleString()}</div>
+      cell: ({ row }) => (
+        <div>{new Date(row.getValue<string>("orderDate")).toLocaleString()}</div>
       )
     }
   ]
