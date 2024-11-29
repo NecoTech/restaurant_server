@@ -3,7 +3,6 @@ import dbConnect from '@/lib/dbConnect';
 import Order from '@/models/Order';
 import Restaurant from '@/models/Restaurant';
 import { withCors } from '@/lib/cors';
-
 import { FilterQuery } from 'mongoose';
 
 interface IOrder {
@@ -17,11 +16,35 @@ interface IOrder {
     restaurantId: string;
     createdAt: Date;
 }
-const buildOrderQuery = (restaurantIds: string[], params: { restaurantId?: string; paymentMethod?: string }): FilterQuery<IOrder> => ({
-    restaurantId: params.restaurantId && params.restaurantId !== 'all' ? params.restaurantId : { $in: restaurantIds },
-    orderStatus: 'Completed',
-    ...(params.paymentMethod && params.paymentMethod !== 'all' && { paymentMethod: params.paymentMethod })
-});
+
+interface QueryParams {
+    restaurantId?: string;
+    paymentMethod?: string;
+    startDate?: string;
+    endDate?: string;
+}
+
+const buildOrderQuery = (restaurantIds: string[], params: QueryParams): FilterQuery<IOrder> => {
+    const startDate = params.startDate ? new Date(params.startDate) : new Date();
+    startDate.setHours(0, 0, 0, 0);
+
+    const endDate = params.endDate ? new Date(params.endDate) : new Date();
+    endDate.setHours(23, 59, 59, 999);
+
+    return {
+        restaurantId: params.restaurantId && params.restaurantId !== 'all'
+            ? params.restaurantId
+            : { $in: restaurantIds },
+        orderStatus: 'Completed',
+        createdAt: {
+            $gte: startDate,
+            $lte: endDate
+        },
+        ...(params.paymentMethod && params.paymentMethod !== 'all' && {
+            paymentMethod: params.paymentMethod
+        })
+    };
+};
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
     const { method, query } = req;
@@ -30,7 +53,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     switch (method) {
         case 'GET':
             try {
-                const { restaurantId, paymentMethod, ownerEmail } = query;
+                const {
+                    restaurantId,
+                    paymentMethod,
+                    ownerEmail,
+                    startDate,
+                    endDate
+                } = query;
 
                 if (!ownerEmail) {
                     return res.status(400).json({ message: 'Owner email is required' });
@@ -41,17 +70,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
                 const orderQuery = buildOrderQuery(restaurantIds, {
                     restaurantId: restaurantId as string,
-                    paymentMethod: paymentMethod as string
+                    paymentMethod: paymentMethod as string,
+                    startDate: startDate as string,
+                    endDate: endDate as string
                 });
 
                 const orders = await Order.find(orderQuery)
                     .sort({ createdAt: -1 })
                     .select('userId orderNumber total phonenumber orderStatus paymentMethod paid restaurantId createdAt');
 
-                const restaurantsMap: Record<string, string> = ownerRestaurants.reduce((map, restaurant) => ({
-                    ...map,
-                    [restaurant.id]: restaurant.name
-                }), {});
+                const restaurantsMap: Record<string, string> = ownerRestaurants.reduce(
+                    (map, restaurant) => ({
+                        ...map,
+                        [restaurant.id]: restaurant.name
+                    }),
+                    {}
+                );
 
                 const ordersWithRestaurantDetails = orders.map(order => ({
                     ...order.toObject(),

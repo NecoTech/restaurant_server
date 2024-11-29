@@ -37,7 +37,13 @@ async function handler(req, res) {
                             _id: { $hour: "$createdAt" },
                             totalRevenue: { $sum: "$total" },
                             orderCount: { $sum: 1 },
-                            averageOrderValue: { $avg: "$total" }
+                            averageOrderValue: { $avg: "$total" },
+                            orders: {
+                                $push: {
+                                    createdAt: "$createdAt",
+                                    total: "$total"
+                                }
+                            }
                         }
                     },
                     {
@@ -49,6 +55,7 @@ async function handler(req, res) {
                             totalRevenue: { $round: ["$totalRevenue", 2] },
                             orderCount: 1,
                             averageOrderValue: { $round: ["$averageOrderValue", 2] },
+                            orders: 1,
                             _id: 0
                         }
                     }
@@ -61,7 +68,16 @@ async function handler(req, res) {
                         hour: i,
                         totalRevenue: existingHour ? existingHour.totalRevenue : 0,
                         orderCount: existingHour ? existingHour.orderCount : 0,
-                        averageOrderValue: existingHour ? existingHour.averageOrderValue : 0
+                        averageOrderValue: existingHour ? existingHour.averageOrderValue : 0,
+                        orders: existingHour ? existingHour.orders.sort((a, b) =>
+                            new Date(b.createdAt) - new Date(a.createdAt)
+                        ) : [],
+                        lastOrderTime: existingHour && existingHour.orders.length > 0
+                            ? existingHour.orders.reduce((latest, order) =>
+                                new Date(order.createdAt) > new Date(latest) ? order.createdAt : latest,
+                                existingHour.orders[0].createdAt
+                            )
+                            : null
                     };
                 });
 
@@ -70,14 +86,25 @@ async function handler(req, res) {
                     totalDailyRevenue: filledDistribution.reduce((sum, hour) => sum + hour.totalRevenue, 0),
                     totalOrders: filledDistribution.reduce((sum, hour) => sum + hour.orderCount, 0),
                     peakHour: filledDistribution.reduce((max, hour) =>
-                        hour.totalRevenue > (max.totalRevenue || 0) ? hour : max, {}),
+                        hour.totalRevenue > (max.totalRevenue || 0) ? {
+                            ...hour,
+                            lastOrderTime: hour.lastOrderTime
+                        } : max,
+                        { totalRevenue: 0 }
+                    ),
                     averageHourlyRevenue: filledDistribution.reduce((sum, hour) =>
                         sum + hour.totalRevenue, 0) / 24
                 };
 
                 res.status(200).json({
                     hourlyData: filledDistribution,
-                    summary: summary
+                    summary: summary,
+                    metadata: {
+                        queryPeriod: {
+                            start: startOfDay,
+                            end: endOfDay
+                        }
+                    }
                 });
             } catch (error) {
                 console.error('Daily Distribution API Error:', error);
