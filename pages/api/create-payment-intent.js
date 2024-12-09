@@ -1,4 +1,3 @@
-// const Stripe = require('stripe');
 import Stripe from 'stripe';
 
 // Initialize Stripe with your secret key
@@ -36,7 +35,7 @@ export default async function handler(req, res) {
             paymentIntent: paymentIntent.client_secret,
             ephemeralKey: ephemeralKey.secret,
             customer: customer.id,
-            publishableKey: 'pk_test_51PvN6URoJOomwVMlAgoueDlCcPK7xL3ntbm7OWCO6q30UVgSVnURF9TFe059jcExl6IcAi6Kg97OBXrsMFEB0H4400xoOqycSI'
+            publishableKey: process.env.STRIPE_PUBLISHABLE_KEY
         });
 
 
