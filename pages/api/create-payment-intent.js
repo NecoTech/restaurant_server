@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { planId, price, customerEmail } = req.body;
+        const { price, customerEmail } = req.body;
 
         const customer = await stripe.customers.create();
         const ephemeralKey = await stripe.ephemeralKeys.create(
