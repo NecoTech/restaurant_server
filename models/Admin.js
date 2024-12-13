@@ -19,10 +19,37 @@ const AdminSchema = new mongoose.Schema({
         minlength: [6, 'Password must be at least 6 characters'],
         select: false
     },
+    phone: {
+        type: String,
+        trim: true,
+        match: [/^[0-9]{10}$/, 'Please provide a valid phone number']
+    },
+    gender: {
+        type: String,
+        enum: ['male', 'female', 'other'],
+        lowercase: true
+    },
+    dateOfBirth: {
+        type: Date
+    },
+    profileImage: {
+        type: String,
+        default: null
+    },
     createdAt: {
         type: Date,
         default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
     }
+});
+
+// Update timestamp on modification
+AdminSchema.pre('save', function (next) {
+    this.updatedAt = new Date();
+    next();
 });
 
 // Hash password before saving

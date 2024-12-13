@@ -12,15 +12,24 @@ const RestaurantSchema = new mongoose.Schema({
         required: [true, 'Restaurant name is required'],
         trim: true
     },
+    fssaiCode: {
+        type: String,
+        required: [true, 'FSSAI License code is required'],
+        trim: true
+    },
     bannerImage: {
-        data: Buffer,
-        contentType: String
+        type: String,
+        default: null
     },
     ownerEmail: {
         type: String,
         required: [true, 'Owner email is required'],
         trim: true,
         lowercase: true
+    },
+    active: {
+        type: Boolean,
+        default: true
     }
 }, {
     timestamps: true
