@@ -1,0 +1,69 @@
+import dbConnect from '../../../lib/dbConnect';
+import PurchaseBill from '../../../models/PurchaseBill';
+import { protect } from '../../../middleware/authMiddleware';
+import { withCors } from '../../../lib/cors';
+
+async function handler(req, res) {
+    const { method } = req;
+
+    try {
+        await protect(req, res, async () => {
+            await dbConnect();
+
+            switch (method) {
+                case 'GET':
+                    try {
+                        const { restaurantId } = req.query;
+                        if (!restaurantId) {
+                            return res.status(400).json({ error: 'Restaurant ID is required' });
+                        }
+
+                        const bills = await PurchaseBill.find({
+                            restaurantId: restaurantId.toString()
+                        }).sort({ billDate: -1 });
+
+                        res.status(200).json(bills);
+                    } catch (error) {
+                        res.status(400).json({ error: error.message });
+                    }
+                    break;
+
+                case 'POST':
+                    try {
+                        const billData = {
+                            ...req.body,
+                            restaurantId: req.body.restaurantId.toString()
+                        };
+
+                        // Validate items
+                        if (!billData.items || billData.items.length === 0) {
+                            return res.status(400).json({
+                                error: 'At least one item is required'
+                            });
+                        }
+
+                        const bill = await PurchaseBill.create(billData);
+                        res.status(201).json(bill);
+                    } catch (error) {
+                        if (error.name === 'ValidationError') {
+                            return res.status(400).json({
+                                error: 'Validation error',
+                                details: Object.values(error.errors).map(err => err.message)
+                            });
+                        }
+                        throw error;
+                    }
+                    break;
+
+                default:
+                    res.setHeader('Allow', ['GET', 'POST']);
+                    res.status(405).end(`Method ${method} Not Allowed`);
+            }
+        });
+    } catch (error) {
+        console.error('Purchase Bill API error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}
+
+export default withCors(handler);
