@@ -13,17 +13,38 @@ async function handler(req, res) {
             switch (method) {
                 case 'GET':
                     try {
-                        const { restaurantId } = req.query;
+                        const { restaurantId, startDate, endDate } = req.query;
                         if (!restaurantId) {
                             return res.status(400).json({ error: 'Restaurant ID is required' });
                         }
 
-                        const bills = await PurchaseBill.find({
+                        // Build the query object
+                        let query = {
                             restaurantId: restaurantId.toString()
-                        }).sort({ billDate: -1 });
+                        };
+
+                        // Add date range filters if provided
+                        if (startDate || endDate) {
+                            query.billDate = {};
+
+                            if (startDate) {
+                                query.billDate.$gte = new Date(startDate);
+                            }
+
+                            if (endDate) {
+                                // Add one day to endDate to include the entire day
+                                const endDateObj = new Date(endDate);
+                                endDateObj.setDate(endDateObj.getDate() + 1);
+                                query.billDate.$lt = endDateObj;
+                            }
+                        }
+
+                        const bills = await PurchaseBill.find(query)
+                            .sort({ billDate: -1 });
 
                         res.status(200).json(bills);
                     } catch (error) {
+                        console.error('GET bills error:', error);
                         res.status(400).json({ error: error.message });
                     }
                     break;
@@ -51,6 +72,7 @@ async function handler(req, res) {
                                 details: Object.values(error.errors).map(err => err.message)
                             });
                         }
+                        console.error('POST bill error:', error);
                         throw error;
                     }
                     break;
