@@ -26,6 +26,7 @@ interface QueryParams {
 
 const buildOrderQuery = (restaurantIds: string[], params: QueryParams): FilterQuery<IOrder> => {
     const startDate = params.startDate ? new Date(params.startDate) : new Date();
+    console.log("strat date", startDate);
     startDate.setHours(0, 0, 0, 0);
 
     const endDate = params.endDate ? new Date(params.endDate) : new Date();

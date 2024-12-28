@@ -33,11 +33,32 @@ const PurchaseBillSchema = new mongoose.Schema({
             type: Number,
             required: [true, 'Price is required'],
             min: 0
-        }
+        },
+        unit: {
+            type: String,
+            required: [true, 'Unit is required'],
+            trim: true
+        },
     }],
     totalAmount: {
         type: Number,
         required: [true, 'Total amount is required'],
+        min: 0
+    },
+    taxPercentage: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 100
+    },
+    taxAmount: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
+    finalAmount: {
+        type: Number,
+        required: [true, 'Final amount is required'],
         min: 0
     },
     paymentStatus: {
@@ -55,6 +76,23 @@ const PurchaseBillSchema = new mongoose.Schema({
     }
 }, {
     timestamps: true
+});
+
+// Pre-save middleware to calculate tax and final amount if not set
+PurchaseBillSchema.pre('save', function (next) {
+    if (!this.taxPercentage) {
+        this.taxPercentage = 0;
+    }
+
+    if (!this.taxAmount) {
+        this.taxAmount = (this.totalAmount * this.taxPercentage) / 100;
+    }
+
+    if (!this.finalAmount) {
+        this.finalAmount = this.totalAmount + this.taxAmount;
+    }
+
+    next();
 });
 
 export default mongoose.models.PurchaseBill || mongoose.model('PurchaseBill', PurchaseBillSchema);

@@ -28,6 +28,7 @@ async function handler(req, res) {
                         $inc: { 'quantity': item.quantity },
                         $set: {
                             'price': item.price,
+                            'unit': item.unit,
                             'isAvailable': true
                         }
                     },
