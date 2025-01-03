@@ -9,13 +9,79 @@ async function handler(req, res) {
     switch (method) {
         case 'POST':
             try {
-                const newOrder = new Order(req.body);
+                const {
+                    orderNumber,
+                    items,
+                    subtotal,
+                    tax,
+                    total,
+                    tableNumber,
+                    paymentMethod,
+                    paid,
+                    userId,
+                    restaurantId,
+                    phonenumber,
+                    orderStatus
+                } = req.body;
+
+                // Validate required fields
+                if (!orderNumber || !items || !restaurantId) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Missing required fields'
+                    });
+                }
+
+                // Validate items array
+                if (!Array.isArray(items) || items.length === 0) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Order must contain at least one item'
+                    });
+                }
+
+                // Create order object with all fields
+                const orderData = {
+                    orderNumber,
+                    items: items.map(item => ({
+                        name: item.name,
+                        price: item.price,
+                        quantity: item.quantity
+                    })),
+                    subtotal: Number(subtotal),
+                    tax: Number(tax),
+                    total: Number(total),
+                    tableNumber,
+                    paymentMethod,
+                    paid: Boolean(paid),
+                    userId,
+                    restaurantId,
+                    phonenumber,
+                    orderStatus: orderStatus || 'Notcomplete'
+                };
+
+                // console.log('Creating new order with data:', orderData);
+
+                const newOrder = new Order(orderData);
                 const savedOrder = await newOrder.save();
-                res.status(201).json(savedOrder);
+
+                // console.log('Order saved successfully:', savedOrder);
+
+                res.status(201).json({
+                    success: true,
+                    data: savedOrder
+                });
+
             } catch (error) {
-                res.status(400).json({ message: error.message });
+                console.error('Error saving order:', error);
+                res.status(400).json({
+                    success: false,
+                    message: error.message || 'Failed to save order',
+                    error: process.env.NODE_ENV === 'development' ? error : undefined
+                });
             }
             break;
+
         default:
             res.setHeader('Allow', ['POST']);
             res.status(405).end(`Method ${method} Not Allowed`);

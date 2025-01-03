@@ -14,7 +14,7 @@ async function restaurantHandler(req: NextApiRequest, res: NextApiResponse) {
     const { id } = req.query
 
     try {
-        const restaurant = await Restaurant.findOne({ id: id })
+        const restaurant = await Restaurant.findOne({ id: id, isOnline: true })
 
         if (!restaurant) {
             return res.status(404).json({ message: 'Restaurant not found' })

@@ -1,117 +1,138 @@
 import dbConnect from '../../../lib/dbConnect';
 import Order from '../../../models/Order';
 import { withCors } from '../../../lib/cors';
+import { format, startOfYear, endOfYear, eachMonthOfInterval } from 'date-fns';
 
 async function handler(req, res) {
     const { method, query } = req;
-    const { restaurantId } = query;
-
     await dbConnect();
 
-    switch (method) {
-        case 'GET':
-            try {
-                if (!restaurantId) {
-                    return res.status(400).json({ message: 'Restaurant ID is required' });
-                }
+    if (method === 'GET') {
+        try {
+            const { restaurantId } = query;
 
-                // Get first day of last 12 months
-                const startDate = new Date();
-                startDate.setMonth(startDate.getMonth() - 7);
-                startDate.setDate(1);
-                startDate.setHours(0, 0, 0, 0);
-
-                const revenueData = await Order.aggregate([
-                    {
-                        $match: {
-                            restaurantId: restaurantId,
-                            createdAt: { $gte: startDate },
-                            paid: true,
-                            orderStatus: 'Completed'
-                        }
-                    },
-                    {
-                        $group: {
-                            _id: {
-                                year: { $year: "$createdAt" },
-                                month: { $month: "$createdAt" }
-                            },
-                            totalRevenue: { $sum: "$total" },
-                            orderCount: { $sum: 1 },
-                            averageOrderValue: { $avg: "$total" },
-                            counterPayments: {
-                                $sum: { $cond: [{ $eq: ["$paymentMethod", "counter"] }, 1, 0] }
-                            },
-                            googlePayPayments: {
-                                $sum: { $cond: [{ $eq: ["$paymentMethod", "googlepay"] }, 1, 0] }
-                            }
-                        }
-                    },
-                    { $sort: { "_id.year": 1, "_id.month": 1 } },
-                    {
-                        $project: {
-                            date: {
-                                $dateFromParts: {
-                                    year: "$_id.year",
-                                    month: "$_id.month",
-                                    day: 1
-                                }
-                            },
-                            totalRevenue: 1,
-                            orderCount: 1,
-                            averageOrderValue: { $round: ["$averageOrderValue", 2] },
-                            counterPayments: 1,
-                            googlePayPayments: 1
-                        }
-                    }
-                ]);
-
-                const formattedData = formatChartData(revenueData);
-                const summary = calculateSummary(revenueData);
-
-                res.status(200).json({
-                    chart: formattedData,
-                    summary: summary,
-                    details: revenueData
-                });
-            } catch (error) {
-                console.error('Monthly Revenue API Error:', error);
-                res.status(500).json({ message: error.message });
+            if (!restaurantId) {
+                return res.status(400).json({ message: 'Restaurant ID is required' });
             }
-            break;
-        default:
-            res.setHeader('Allow', ['GET']);
-            res.status(405).end(`Method ${method} Not Allowed`);
+
+            // Get data for the current year by default
+            const startDate = startOfYear(new Date());
+            const endDate = endOfYear(new Date());
+
+            const monthlyRevenue = await Order.aggregate([
+                {
+                    $match: {
+                        restaurantId,
+                        createdAt: { $gte: startDate, $lte: endDate },
+                        paid: true,
+                        orderStatus: 'Completed'
+                    }
+                },
+                {
+                    $group: {
+                        _id: {
+                            year: { $year: "$createdAt" },
+                            month: { $month: "$createdAt" }
+                        },
+                        totalRevenue: { $sum: "$total" },
+                        orderCount: { $sum: 1 },
+                        averageOrderValue: { $avg: "$total" }
+                    }
+                },
+                { $sort: { "_id.year": 1, "_id.month": 1 } },
+                {
+                    $project: {
+                        monthYear: {
+                            $concat: [
+                                { $toString: "$_id.year" },
+                                "-",
+                                {
+                                    $cond: [
+                                        { $lt: ["$_id.month", 10] },
+                                        { $concat: ["0", { $toString: "$_id.month" }] },
+                                        { $toString: "$_id.month" }
+                                    ]
+                                }
+                            ]
+                        },
+                        totalRevenue: 1,
+                        orderCount: 1,
+                        averageOrderValue: { $round: ["$averageOrderValue", 2] }
+                    }
+                }
+            ]);
+
+            const formattedData = formatChartData(monthlyRevenue, startDate, endDate);
+            const summary = calculateSummary(monthlyRevenue);
+
+            res.status(200).json({ chart: formattedData, summary });
+        } catch (error) {
+            console.error('Monthly Revenue API Error:', error);
+            res.status(500).json({ message: error.message });
+        }
+    } else {
+        res.setHeader('Allow', ['GET']);
+        res.status(405).end(`Method ${method} Not Allowed`);
     }
 }
 
-function formatChartData(revenueData) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return {
-        labels: revenueData.map(data => months[new Date(data.date).getMonth()]),
+function formatChartData(revenueData, startDate, endDate) {
+    // Generate array of all months in the range
+    const monthRange = eachMonthOfInterval({
+        start: startDate,
+        end: endDate
+    });
+
+    const result = {
+        labels: [],
         datasets: [{
-            data: revenueData.map(data => data.totalRevenue),
+            data: [],
             color: (opacity = 1) => `rgba(255, 56, 92, ${opacity})`,
             strokeWidth: 2
         }]
     };
+
+    // Format each month and map revenue data
+    monthRange.forEach(date => {
+        const monthStr = format(date, 'yyyy-MM');
+        const monthData = revenueData.find(d => d.monthYear === monthStr);
+
+        // Format the label to show month name
+        const label = format(date, 'MMM yyyy');
+
+        result.labels.push(label);
+        result.datasets[0].data.push(monthData ? monthData.totalRevenue : 0);
+    });
+
+    return result;
 }
 
 function calculateSummary(revenueData) {
-    return revenueData.reduce((summary, month) => ({
-        totalRevenue: summary.totalRevenue + month.totalRevenue,
-        totalOrders: summary.totalOrders + month.orderCount,
-        averageOrderValue: Number((summary.totalRevenue / summary.totalOrders).toFixed(2)),
-        paymentBreakdown: {
-            counter: summary.paymentBreakdown.counter + month.counterPayments,
-            googlePay: summary.paymentBreakdown.googlePay + month.googlePayPayments
-        }
-    }), {
-        totalRevenue: 0,
-        totalOrders: 0,
-        averageOrderValue: 0,
-        paymentBreakdown: { counter: 0, googlePay: 0 }
-    });
+    if (!revenueData.length) {
+        return {
+            highestMonth: { month: 'N/A', revenue: 0 },
+            averageRevenue: 0,
+            totalRevenue: 0,
+            totalOrders: 0
+        };
+    }
+
+    let highestMonth = revenueData.reduce((max, month) =>
+        month.totalRevenue > max.totalRevenue ? month : max
+        , revenueData[0]);
+
+    const totalRevenue = revenueData.reduce((sum, month) => sum + month.totalRevenue, 0);
+    const totalOrders = revenueData.reduce((sum, month) => sum + month.orderCount, 0);
+
+    return {
+        highestMonth: {
+            month: format(new Date(highestMonth.monthYear), 'MMMM yyyy'),
+            revenue: highestMonth.totalRevenue
+        },
+        averageRevenue: totalRevenue / revenueData.length,
+        totalRevenue,
+        totalOrders
+    };
 }
 
 export default withCors(handler);

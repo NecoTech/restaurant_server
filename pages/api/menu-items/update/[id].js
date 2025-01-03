@@ -21,7 +21,8 @@ async function handler(req, res) {
                 image,
                 volume,
                 restaurantId,
-                category
+                category,
+                margin
             } = req.body;
 
             // Validate required fields
@@ -64,6 +65,7 @@ async function handler(req, res) {
                     isAvailable,
                     image,
                     volume,
+                    margin: parseFloat(margin),
                     updatedAt: new Date()
                 };
 

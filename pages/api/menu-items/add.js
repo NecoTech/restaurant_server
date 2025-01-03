@@ -21,7 +21,8 @@ async function handler(req, res) {
                 volume,
                 image,
                 // isHidden,
-                isOutOfStock
+                isOutOfStock,
+                margin
             } = req.body;
 
             // Validate required fields
@@ -45,6 +46,7 @@ async function handler(req, res) {
                     isAvailable: !isOutOfStock,
                     image,
                     volume: volume ? volume : undefined,
+                    margin: parseFloat(margin)
                     // isHidden: isHidden || false
                 };
 

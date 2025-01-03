@@ -27,6 +27,14 @@ const RestaurantSchema = new mongoose.Schema({
         trim: true,
         lowercase: true
     },
+    isOnline: {
+        type: Boolean,
+        default: true
+    },
+    currency: {
+        type: String,
+        default: '₹'
+    },
     active: {
         type: Boolean,
         default: true

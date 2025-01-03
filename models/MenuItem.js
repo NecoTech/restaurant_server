@@ -20,6 +20,7 @@ const MenuItemSchema = new mongoose.Schema({
     name: { type: String, required: true, trim: true },
     description: String,
     price: { type: Number, required: true },
+    margin: { type: Number },
     isAvailable: { type: Boolean, default: true },
     image: String,
     volume: String
