@@ -1,5 +1,6 @@
 import dbConnect from '../../../lib/dbConnect';
 import Order from '../../../models/Order';
+import Restaurant from '../../../models/Restaurant';
 import { withCors } from '../../../lib/cors';
 
 async function handler(req, res) {
@@ -10,8 +11,15 @@ async function handler(req, res) {
         try {
             const { restaurantId } = query;
 
+
             if (!restaurantId) {
                 return res.status(400).json({ message: 'Restaurant ID is required' });
+            }
+
+            // Get restaurant type
+            const restaurant = await Restaurant.find({ id: restaurantId });
+            if (!restaurant) {
+                return res.status(404).json({ message: 'Restaurant not found' });
             }
 
             // Get today's start and end time in local timezone
@@ -19,24 +27,44 @@ async function handler(req, res) {
             const startOfDay = new Date(today.setHours(0, 0, 0, 0));
             const endOfDay = new Date(today.setHours(23, 59, 59, 999));
 
-            const orders = await Order.find({
+            // Build query based on restaurant type
+            let orderQuery = {
                 restaurantId,
-                orderStatus: {
-                    $nin: ['Notcomplete', 'Cancelled']
-                },
-                paid: {
-                    $nin: [true]
-                },
                 createdAt: {
                     $gte: startOfDay,
                     $lte: endOfDay
                 }
-            })
+            };
+            if (restaurant[0].restaurantType === 'Canteen') {
+                orderQuery = {
+                    ...orderQuery,
+                    orderStatus: {
+                        $nin: ['Completed', 'Cancelled']
+                    },
+                    paid: {
+                        $nin: [true]
+                    }
+                };
+            } else {
+                orderQuery = {
+                    ...orderQuery,
+                    orderStatus: {
+                        $nin: ['Notcomplete', 'Cancelled']
+                    },
+                    paid: {
+                        $nin: [true]
+                    }
+                };
+            }
+
+            const orders = await Order.find(orderQuery)
                 .populate('userId', 'name email')
                 .sort({ createdAt: -1 });
 
+
             const response = {
                 count: orders.length,
+                restaurantType: restaurant[0].restaurantType,
                 latestOrder: orders.length > 0 ? {
                     id: orders[0]._id,
                     orderNumber: orders[0].orderNumber,

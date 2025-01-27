@@ -12,14 +12,23 @@ async function handler(req, res) {
         await protect(req, res, async () => {
             await dbConnect();
 
-            const { restaurantName, bannerImage, fssaiCode } = req.body;
+            const { restaurantName, bannerImage, fssaiCode, restaurantType } = req.body;
             const ownerEmail = req.admin.email;
+
+            // Validate restaurant type
+            if (restaurantType && !['Restaurant', 'Canteen'].includes(restaurantType)) {
+                return res.status(400).json({
+                    error: 'Invalid restaurant type. Must be either "Restaurant" or "Canteen"'
+                });
+            }
+
             const restaurant = await Restaurant.findOneAndUpdate(
                 { ownerEmail },
                 {
                     name: restaurantName,
                     bannerImage: bannerImage,
                     fssaiCode: fssaiCode,
+                    restaurantType: restaurantType,
                 },
                 { new: true, upsert: true }
             );

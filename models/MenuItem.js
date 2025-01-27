@@ -23,7 +23,8 @@ const MenuItemSchema = new mongoose.Schema({
     margin: { type: Number },
     isAvailable: { type: Boolean, default: true },
     image: String,
-    volume: String
+    volume: String,
+    count: { type: Number, default: 0, min: 0 } // Added count field
   }]
 }, {
   timestamps: true

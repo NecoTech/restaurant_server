@@ -34,7 +34,8 @@
     ".next/types/**/*.ts",
     "app/(login)/page.js",
     "pages/api/subscriptions/create.js",
-    "models/Subscription.js"
+    "models/Subscription.js",
+    "pages/api/payments/index.js"
   ],
   "exclude": [
     "node_modules"

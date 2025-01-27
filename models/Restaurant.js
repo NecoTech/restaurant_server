@@ -12,6 +12,12 @@ const RestaurantSchema = new mongoose.Schema({
         required: [true, 'Restaurant name is required'],
         trim: true
     },
+    restaurantType: {
+        type: String,
+        required: [true, 'Restaurant type is required'],
+        enum: ['Restaurant', 'Canteen'],
+        trim: true
+    },
     fssaiCode: {
         type: String,
         required: [true, 'FSSAI License code is required'],

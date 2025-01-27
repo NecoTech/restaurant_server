@@ -24,7 +24,7 @@ async function handler(req, res) {
                 // Fetch restaurant details
                 const restaurant = await Restaurant.findOne(
                     { id: restaurantId },
-                    { ownerEmail: 1, name: 1 } // Only fetch ownerEmail and name fields
+                    { ownerEmail: 1, name: 1, restaurantType: 1 } // Only fetch ownerEmail and name fields
                 );
 
                 if (!restaurant) {
@@ -37,7 +37,8 @@ async function handler(req, res) {
                 res.status(200).json({
                     success: true,
                     ownerEmail: restaurant.ownerEmail,
-                    name: restaurant.name
+                    name: restaurant.name,
+                    type: restaurant.restaurantType
                 });
             } catch (error) {
                 console.error('Error fetching restaurant details:', error);
