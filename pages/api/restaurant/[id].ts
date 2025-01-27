@@ -19,7 +19,6 @@ async function restaurantHandler(req: NextApiRequest, res: NextApiResponse) {
         if (!restaurant) {
             return res.status(404).json({ message: 'Restaurant not found' })
         }
-
         // Convert Buffer data to a format that can be sent to the client
         const restaurantData = restaurant.toObject()
         if (restaurantData.bannerImage && restaurantData.bannerImage.data) {
