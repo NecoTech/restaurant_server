@@ -1,5 +1,15 @@
 import mongoose from 'mongoose';
 
+const StockUpdateSchema = new mongoose.Schema({
+    quantity: Number,
+    updateImage: String,
+    updateNote: String,
+    timestamp: {
+        type: Date,
+        default: Date.now
+    }
+});
+
 const StockSchema = new mongoose.Schema({
     name: {
         type: String,
@@ -35,8 +45,13 @@ const StockSchema = new mongoose.Schema({
         default: true
     },
     restaurantId: {
-        type: String,  // Changed from ObjectId to String
+        type: String,
         required: [true, 'Restaurant ID is required']
+    },
+    updateHistory: [StockUpdateSchema], // Array to store update history
+    lastUpdated: {
+        type: Date,
+        default: Date.now
     }
 }, {
     timestamps: true

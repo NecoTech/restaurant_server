@@ -1,6 +1,5 @@
 import dbConnect from '../../../lib/dbConnect';
 import Stock from '../../../models/Stock';
-// import { protect } from '../../../middleware/authMiddleware';
 import { withCors } from '../../../lib/cors';
 
 async function handler(req, res) {
@@ -11,11 +10,9 @@ async function handler(req, res) {
     } = req;
 
     try {
-        // await protect(req, res, async () => {
         await dbConnect();
 
         // Handle GET request for fetching stock items by restaurantId
-        // GET /api/stock/:restaurantId
         if (method === 'GET' && params.length === 1) {
             try {
                 const restaurantId = params[0];
@@ -29,7 +26,6 @@ async function handler(req, res) {
         }
 
         // Handle PATCH request for updating stock quantity
-        // PATCH /api/stock/:stockId/update
         if (method === 'PATCH' && params.length === 2 && params[1] === 'update') {
             try {
                 const stockId = params[0];
@@ -41,11 +37,32 @@ async function handler(req, res) {
                     });
                 }
 
+                // Create update history entry
+                const updateEntry = {
+                    quantity: body.removed,
+                    updateNote: body.updateNote || 'Stock update',
+                    timestamp: new Date(),
+                };
+
+                // Add image if provided
+                if (body.updateImage) {
+                    // Validate base64 string
+                    if (!/^[A-Za-z0-9+/=]+$/.test(body.updateImage)) {
+                        return res.status(400).json({
+                            error: 'Invalid image format'
+                        });
+                    }
+                    updateEntry.updateImage = body.updateImage;
+                }
+
                 const updatedStock = await Stock.findByIdAndUpdate(
                     stockId,
                     {
                         quantity: body.quantity,
-                        lastUpdated: body.lastUpdated || new Date().toISOString()
+                        lastUpdated: body.lastUpdated || new Date(),
+                        $push: {
+                            updateHistory: updateEntry
+                        }
                     },
                     {
                         new: true,
@@ -60,7 +77,7 @@ async function handler(req, res) {
                 // Check if stock is below minimum quantity
                 if (updatedStock.quantity <= updatedStock.minQuantity) {
                     console.log(`Low stock alert for ${updatedStock.name}`);
-                    // You could add notification logic here
+                    // Add notification logic here if needed
                 }
 
                 return res.status(200).json(updatedStock);
@@ -78,7 +95,6 @@ async function handler(req, res) {
         // If no route matches
         res.setHeader('Allow', ['GET', 'PATCH']);
         return res.status(405).end(`Method ${method} Not Allowed`);
-        // });
     } catch (error) {
         console.error('Stock API error:', error);
         return res.status(500).json({ error: 'Internal server error' });
