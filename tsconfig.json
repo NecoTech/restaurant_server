@@ -35,7 +35,8 @@
     "app/(login)/page.js",
     "pages/api/subscriptions/create.js",
     "models/Subscription.js",
-    "pages/api/payments/index.js"
+    "pages/api/payments/index.js",
+    "pages/api/create-payment-session/route.js"
   ],
   "exclude": [
     "node_modules"

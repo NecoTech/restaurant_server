@@ -3,8 +3,8 @@ import Order from '../../../models/Order';
 import OtherBill from '../../../models/OtherBill';
 import { withCors } from '../../../lib/cors';
 import {
-    startOfMonth, endOfMonth,
-    startOfWeek, endOfWeek,
+    startOfMonth, endOfMonth, subDays,
+    // startOfWeek, endOfWeek,
     startOfDay, endOfDay,
     eachDayOfInterval,
     format, parseISO,
@@ -30,8 +30,8 @@ async function handler(req, res) {
             const monthlyEndDate = endOfMonth(selectedDate);
 
             // Get data for weekly view (current week)
-            const weeklyStartDate = startOfWeek(selectedDate);
-            const weeklyEndDate = endOfWeek(selectedDate);
+            const weeklyStartDate = startOfDay(subDays(selectedDate, 6)); // 6 days back + current day = 7 days
+            const weeklyEndDate = endOfDay(selectedDate);
 
             // Get data for daily view (current day)
             const dailyStartDate = startOfDay(selectedDate);
@@ -73,7 +73,7 @@ async function handler(req, res) {
             ]);
 
             // Get weekly data
-            const weeklyData = await Promise.all([
+            const [weeklySales, weeklyExpenses] = await Promise.all([
                 Order.aggregate([
                     {
                         $match: {
@@ -85,7 +85,7 @@ async function handler(req, res) {
                     },
                     {
                         $group: {
-                            _id: { $dateToString: { format: "%u", date: "$createdAt" } },
+                            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
                             sales: { $sum: "$total" }
                         }
                     }
@@ -100,7 +100,7 @@ async function handler(req, res) {
                     },
                     {
                         $group: {
-                            _id: { $dateToString: { format: "%u", date: "$billDate" } },
+                            _id: { $dateToString: { format: "%Y-%m-%d", date: "$billDate" } },
                             expense: { $sum: "$amount" }
                         }
                     }
@@ -163,32 +163,34 @@ async function handler(req, res) {
                 });
 
             // Format weekly data
-            const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            const weeklyFormatted = weekDays.map((day, index) => {
-                const dayNum = (index + 1).toString();
-                const salesEntry = weeklyData[0].find(s => s._id === dayNum) || { sales: 0 };
-                const expenseEntry = weeklyData[1].find(e => e._id === dayNum) || { expense: 0 };
+            // const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const weeklyFormatted = eachDayOfInterval({ start: weeklyStartDate, end: weeklyEndDate })
+                .map(date => {
+                    const dateStr = format(date, 'yyyy-MM-dd');
+                    const salesEntry = weeklySales.find(s => s._id === dateStr) || { sales: 0 };
+                    const expenseEntry = weeklyExpenses.find(e => e._id === dateStr) || { expense: 0 };
 
-                const sales = Number((salesEntry.sales || 0).toFixed(2));
-                const expense = Number((expenseEntry.expense || 0).toFixed(2));
-                const profit = Number((sales - expense).toFixed(2));
+                    const sales = Number((salesEntry.sales || 0).toFixed(2));
+                    const expense = Number((expenseEntry.expense || 0).toFixed(2));
+                    const profit = Number((sales - expense).toFixed(2));
 
-                return {
-                    period: day,
-                    sales,
-                    expense,
-                    profit
-                };
-            });
+                    return {
+                        period: `${format(date, 'EEE ')}\n${format(date, 'MMM d')}`,
+                        sales,
+                        expense,
+                        profit,
+                        fullDate: dateStr
+                    };
+                });
 
             // Format daily data
-            const dailySales = dailyData[0][0]?.sales || 0;
-            const dailyExpense = dailyData[1][0]?.expense || 0;
+            const dailySales = Number((dailyData[0][0]?.sales || 0).toFixed(2));
+            const dailyExpense = Number((dailyData[1][0]?.expense || 0).toFixed(2));
             const dailyFormatted = [{
                 period: "Today",
                 sales: dailySales,
                 expense: dailyExpense,
-                profit: dailySales - dailyExpense
+                profit: Number((dailySales - dailyExpense).toFixed(2))
             }];
 
             res.status(200).json({
